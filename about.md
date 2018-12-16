@@ -3,4 +3,5 @@ layout: page
 title: About
 ---
 
-Introduce yourself here... so people will know who you are and what you do.. blah..blah..blah..
+I'm a Software Engineer at Gemline. I look after our internal single page applications built on Angular and maintain and enhance our internal RestFUL APIs
+
