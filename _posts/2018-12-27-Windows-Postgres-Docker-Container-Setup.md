@@ -8,8 +8,8 @@ comment: true
 
 ## Goal
 
-Deploy a postgres container on a windows 10 and then connect via pgAdmin.
-(Postgres Container)[https://hub.docker.com/_/postgres/]
+Deploy a postgres container on a windows 10 and then connect via pgAdmin web interface.
+[Postgres Container](https://hub.docker.com/_/postgres/)
 
 
 ### Switch to Linux Containers
@@ -52,7 +52,7 @@ volumes:
 
 ### Pull & Run the PgAdmin4 Image
 
-docker run -p 80:80 -e "PGADMIN_DEFAULT_EMAIL=user@domain.com" -e "PGADMIN_DEFAULT_PASSWORD=SuperSecret" -d dpage/pgadmin4
+```docker run -p 80:80 -e "PGADMIN_DEFAULT_EMAIL=user@domain.com" -e "PGADMIN_DEFAULT_PASSWORD=SuperSecret" -d dpage/pgadmin4```
 
 
 ## Using psql within the container
