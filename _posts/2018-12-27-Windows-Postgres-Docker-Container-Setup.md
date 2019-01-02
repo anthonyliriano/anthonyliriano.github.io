@@ -8,9 +8,12 @@ comment: true
 
 ## Goal
 
-Deploy a postgres container on a windows 10 and then connect via pgAdmin web interface.
+Deploy a postgres container on a windows 10 and then connect via pgAdmin 4 web interface.
 [Postgres Container](https://hub.docker.com/_/postgres/)
+[pgAdmin 4 Container](https://hub.docker.com/r/dpage/pgadmin4/)
 
+
+![Image](https://github.com/anthonyliriano/anthonyliriano.github.io/blob/master/images/postgres-container-on-windows/pgadmin4-welcome.png?raw=true)
 
 ### Switch to Linux Containers
 After hours of troubleshooting, I realized that I was running under windows container which caused 'could not fsync file' and 'permission denied' error messages. Save yourself the headache -  ***Make sure you're running linux containers to succesfully deploy postgres*** To switch over right click the _Docker Desktop Icon Tray > Switch to Linux containers..._
