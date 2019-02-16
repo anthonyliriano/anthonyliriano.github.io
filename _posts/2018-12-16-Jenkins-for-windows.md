@@ -15,9 +15,7 @@ choco install jenkins
 
 ## Context
 
-To meet our organizations deadlines my team members and I were often working individually with no central deployment process. This made application maintenance a nightmare. After we identified the problem, I was tasked/volunteered with researching and deploying a Jenkins instance to manage our build and release process.  
-
-A lot of lessons were learned, most which I have documented below and as my organization continues to experiment with jenkins I'll keep this post up-to-date to the best of my abilities.
+Deploy a continous integration server to automatate the build and release process for Microsoft .NET & Angular 2 applications.
 
 ## Jenkins Flow
 
@@ -25,16 +23,6 @@ A lot of lessons were learned, most which I have documented below and as my orga
  * Jenkins kicks of a job based on a new commit.
  * Unit Tests are ran.
  * Application is deployed.
-
-
-
-## Deploying an instance only accessible internally vs externally
-
-
-### Github Webook
-The Github Webook which allow jobs to be kicked off based on commit activty wasn't something we were able to leverage as we deployed an instance only accessible internally.
-
-## Freestyle or Pipeline
 
 
 ## Adding A Jenkins Slave.
