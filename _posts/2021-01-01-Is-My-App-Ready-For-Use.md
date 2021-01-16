@@ -13,8 +13,9 @@ Here I document the steps I took and the lessons I learned. Hint: I'm still a ne
 
 Let's face it, you're application won't scale as fast as you might want it to. Focus on covering the biggest areas of concern
 <ul>
-    <li>SSL Certificate</li>
-<ul>
+    <li>SSL Certificate: This ensures that the connection between your..</li>
+    <li>Cross-Site-Scripting: This ensures that the connection between your..</li>
+</ul>
 
 ### Use monitoring tools
 
