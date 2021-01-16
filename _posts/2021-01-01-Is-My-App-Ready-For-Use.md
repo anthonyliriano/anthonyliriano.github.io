@@ -9,7 +9,7 @@ A question I found asking myself while developing the first iteration of the Gra
 
 Here I document the steps I took and the lessons I learned as the only technical resource on the team. Hint: I'm still a newbie, take my advice at your own risk!
 
-### Take Care of the Basics Security Gaps
+### Take Care of the Basic Security Gaps
 
 Let's face it, you're application won't scale as fast as you might want it to. Focus on covering the biggest areas of concern
 <ul>
