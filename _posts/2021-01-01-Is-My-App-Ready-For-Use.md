@@ -5,6 +5,10 @@ tags: [Startups, Production]
 comment: false
 ---
 
-# Is my App/software ready for public use?
-One of the questions I found asking myself while creating an application was whether it was ready to be used by the public, the answer was always "I need to add X feature for non one who asked"..
+### You're not the only one..
+A question I found asking myself while developing my first application was whether it was ready to be used by the public and what would happen If Y happened. I would constantly overthink things... You don't want to publish an application riddled with a bad user experience. 
+
+## 
+
+.....
 
