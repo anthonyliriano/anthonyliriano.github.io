@@ -204,8 +204,15 @@
   
   .tags li {
     float: left; 
+    margin-right: 10px;
   }
  
 .tag{
-    background-color:gainsboro;
+    background-color:whitesmoke;
+    font-size: .75rem !important;
+    color: gray !important;
+}
+
+.tag > a{
+    padding: 3px 2px;
 }
