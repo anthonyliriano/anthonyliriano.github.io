@@ -16,7 +16,7 @@ layout: default
 			<li>
 				<a href="{{ post.url | prepend: site.baseurl | prepend: site.url }}">{{ post.title }}</a> <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%b %d, %Y" }}</time>
 				<p>
-					{% for tag in site.tags %}
+					{% for tag in post.tags %}
 					{{ tag }}
 					{% endfor %}
 
