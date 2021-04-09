@@ -195,7 +195,17 @@
     font-size: .85rem;
     font-style: italic;
 }
+.tags {
+    list-style: none;
+    margin: 0;
+    overflow: hidden; 
+    padding: 0;
+  }
+  
+  .tags li {
+    float: left; 
+  }
  
-.tags > li {
+.tag{
     background-color:gainsboro;
 }
