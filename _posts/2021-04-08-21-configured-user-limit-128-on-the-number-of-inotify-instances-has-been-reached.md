@@ -63,3 +63,6 @@ After some searching, it seems that this was being caused by our use of the Crea
                 })
                 .UseNLog();
 ```
+## Why?
+I still have a few questions, that I couldn't find the answer to. Let me know if you have answers?
+- If we're not changing the AppSettings.Json file within the Docker container, why is realoded on change causing this issue?
