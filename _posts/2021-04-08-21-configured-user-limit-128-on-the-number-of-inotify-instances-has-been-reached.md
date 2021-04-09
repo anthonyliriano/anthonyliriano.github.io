@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Inotify Instances Has Been Reached
+title: Inotify Instances Limit Has Been Reached
 tags: [Kubernetes, K8s, .NET Core, C#, EKS, AWS, Linux]
 comment: false
 ---
