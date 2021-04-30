@@ -7,9 +7,9 @@ title: Contact
 Please feel free to contact me via the form below. 
 
 <div id="repos">
-    <div class="container">
+    <div class="container-fluid">
         <div class="row">
-            <div class="col-6">
+            <div class="col-lg-4 col-sm-12">
               <div class="mb-3">
                 <label for="email" class="form-label">Email address</label>
                 <input type="email" class="form-control" id="email" placeholder="name@example.com">
