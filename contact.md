@@ -4,7 +4,7 @@ title: Contact
 ---
 
 ## Get In Touch
-Please feel free to contact me via the form below. 
+Please feel free to contact me via the form below.
 
 <div id="repos">
     <div class="container-fluid">
@@ -19,9 +19,24 @@ Please feel free to contact me via the form below.
             <textarea class="form-control" id="message" rows="3"></textarea>
             </div>
             <div class="d-grid gap-2">
-                <button class="btn btn-primary" type="button">Send Message</button>
+                <button class="btn btn-dark" type="button" onclick="UserAction()">Send Message</button>
             </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    function UserAction() {
+    console.log('sending http request')
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+         if (this.readyState == 4 && this.status == 200) {
+             alert(this.responseText);
+         }
+    };
+    xhttp.open("POST", "Your Rest URL Here", true);
+    xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.send("Your JSON Data Here");
+}
+</script>
