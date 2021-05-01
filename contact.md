@@ -66,7 +66,7 @@ title: Contact
 
     xhttp.open("POST", "https://notify.lirilabs.com/api/v1/notify?clients=slack,email", true);
     xhttp.setRequestHeader("Content-type", "application/json");
-    // xhttp.send(JSON.stringify(json));
+    xhttp.send(JSON.stringify(json));
 }
 </script>
 
