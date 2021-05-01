@@ -15,7 +15,7 @@ title: Contact
 <div id="repos">
     <div class="container-fluid">
         <div class="row">
-            <form  action="#" class="row needs-validation" novalidate>
+            <form  action="javascript:void(0);" class="row needs-validation" novalidate>
                 <div class="col-lg-5 col-sm-12">
                     <label for="email" class="form-label">E-mail</label>
                     <input type="email" class="form-control" id="email" required>
@@ -65,8 +65,9 @@ title: Contact
     };
 
     xhttp.open("POST", "https://hc9uysiio7.execute-api.us-east-1.amazonaws.com/api/v1/notify?clients=slack,email", true);
-    xhttp.setRequestHeader("Content-type", "application/json");
-    xhttp.send(JSON.stringify(json));
+    // xhttp.setRequestHeader("Content-type", "application/json");
+    // xhttp.setRequestHeader('Access-Control-Allow-Origin', '*');
+    xhttp.send(json);
 }
 </script>
 
