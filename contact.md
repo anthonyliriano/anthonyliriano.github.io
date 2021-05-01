@@ -15,7 +15,7 @@ title: Contact
 <div id="repos">
     <div class="container-fluid">
         <div class="row">
-            <form class="row needs-validation" novalidate>
+            <form  action="#" class="row needs-validation" novalidate>
                 <div class="col-lg-5 col-sm-12">
                     <label for="email" class="form-label">E-mail</label>
                     <input type="email" class="form-control" id="email" required>
@@ -37,7 +37,7 @@ title: Contact
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
          if (this.readyState == 4 && this.status == 200) {
-             alert(this.responseText);
+             window.location.href = "/";
          }
     };
 
@@ -51,15 +51,15 @@ title: Contact
       "sendToEmail": ["anthonylir@gmail.com"],
       "sendBccTo": [],
       "contact": {
-        "firstName" : "",
-        "email" : "",
+        "firstName" : email,
+        "email" : email,
         "phone" : "",
         "company": ""
       },
       "form" : {
        "isSensitive" : false,
        "fields" : {
-           "message" : ""
+           "message" : message
        }
       }
     };
