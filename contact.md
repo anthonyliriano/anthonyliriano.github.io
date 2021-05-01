@@ -64,10 +64,10 @@ title: Contact
       }
     };
 
-    xhttp.open("POST", "https://hc9uysiio7.execute-api.us-east-1.amazonaws.com/api/v1/notify?clients=slack,email", true);
-    // xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.open("POST", "https://hc9uysiio7.execute-api.us-east-1.amazonaws.com/Prod/api/v1/notify?clients=slack,email", true);
+    xhttp.setRequestHeader("Content-type", "application/json");
     // xhttp.setRequestHeader('Access-Control-Allow-Origin', '*');
-    xhttp.send(json);
+    xhttp.send(JSON.stringify(json));
 }
 </script>
 
