@@ -64,7 +64,7 @@ title: Contact
       }
     };
 
-    xhttp.open("POST", "https://notify.lirilabs.com/api/v1/notify?clients=slack,email", true);
+    xhttp.open("POST", "https://hc9uysiio7.execute-api.us-east-1.amazonaws.com/api/v1/notify?clients=slack,email", true);
     xhttp.setRequestHeader("Content-type", "application/json");
     xhttp.send(JSON.stringify(json));
 }
