@@ -189,3 +189,24 @@ hr {
 }
 
 img[alt=drawing] { width: 200px; }
+
+.form-control, .btn {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+#contact-form > h2 {
+    font-weight: 700;
+}
+
+#contact-form > p {
+    font-weight: 300;
+}
+
+#email::placeholder {
+    font-weight: 300;
+}
+
+#message{
+    resize: none;
+}

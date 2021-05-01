@@ -35,16 +35,20 @@
  * Site header
  */
 .site-header {
-    border-bottom: 1px solid $grey-color-light;
+    // border-bottom: 1px solid $grey-color-light;
     margin-top: -2rem;
     max-width: $max-width;
     p {
       font-size: $small-font-size;
     }
     .site-intro {
-        font-size: $big-font-size;
+        font-size: 1.1rem;
+        font-weight: 200;
+        text-align: center;
     }
 }
+
+
 
 .smallcap {
     //text-transform: lowercase;
@@ -69,7 +73,7 @@
  */
 .page-content {
     position: relative;
-    padding: $spacing-unit ($spacing-unit * 0.75);
+    padding: $spacing-unit ($spacing-unit * 0.15);
     margin: 1rem;
     box-sizing: border-box;
     // max-width: $max-width;
@@ -87,13 +91,13 @@
 .post-list > li {
     margin-bottom: $spacing-unit / 4;
     list-style-type: none;
-    margin-left: -2rem;
+    margin-left: -4rem;
 
     a {
-        color: #0645ad;
+        // color: #0645ad;
         text-decoration: none;
-        font-weight: normal;
-
+        font-weight: 300;
+        font-size: .95rem;
         &:hover {
             color: $link-color;
             text-decoration: underline;
@@ -191,34 +195,42 @@
   }
 }
 
-.tags{
-    font-size: .85rem;
-    font-style: italic;
-}
-.tags {
-    list-style: none;
-    margin: 0;
-    overflow: hidden; 
-    padding: 0;
-    margin-top: 5px;
-  }
-  
-  .tags li {
-    float: left; 
-    margin-right: 10px;
-  }
+
+
  
 .tag{
-    background-color:whitesmoke;
     font-size: .70rem !important;
     color: gray !important;
+    padding: 3px;
+    text-decoration: underline;
 }
 
-.tag{
-    padding: 5px;
-}
 
 .site-nav > a{
     margin-right: 5px;
-    font-weight: 500 !important;
+    font-weight: 300 !important;
+    text-decoration: none;
+}
+
+.tags{
+    font-size: .80rem;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+.socials > a{
+    text-decoration: none;
+    font-weight: 300;
+}
+.about-me{
+    font-weight: 400;
+}
+.back-link{
+    text-decoration: none;
+    font-weight: 300;
+    font-size: .90rem;
+    margin: 5px;
+}
+
+.back-link:hover{
+    text-decoration: none;
 }
