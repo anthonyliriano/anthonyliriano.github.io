@@ -210,3 +210,12 @@ img[alt=drawing] { width: 200px; }
 #message{
     resize: none;
 }
+
+h3{
+    font-weight: 700 !important;
+}
+
+code[class*="language-"],
+pre[class*="language-"] {
+    word-wrap: normal;
+}

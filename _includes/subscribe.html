@@ -1,0 +1,63 @@
+<div class="row bg-dark p-1">
+    <div class="col text-white py-2">
+        <h3 class="m-1">
+            👋 PLZ SUBSCRIBE
+        </h3>
+        <h6 class="px-3 my-0 fw-light mb-2">
+            No Spam. Unsubscribe easily at any time.
+        </h6>
+        <div class="row px-3" id="subscription-form">
+            <div class="col-lg-5 col-md-5 col-sm-12 py-2">
+                <input class="form-control form-control-lg " id="email" type="email" placeholder="name@example.com" aria-label=".form-control-lg example">
+            </div>
+            <div class="col-lg-4 col-md-4 col-sm-12 py-2">
+                <button type="button" class="btn btn-light btn-lg" onclick="Subscribe()" >SUBSCRIBE</button>
+            </div>
+        </div>
+        <div class="row px-3 visually-hidden bg-light text-dark justify-content-center" id="subscription-thanks">
+            <div class="col-lg-7 col-md-7 col-sm-12 py-2 text-center">
+               <h3 class="my-1 fw-light"> 🎊 🎉 Thanks For Your Subscription! </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    function Subscribe() {
+        var isInvalid = true;
+        var element = document.getElementById('email');
+        var invalidBorderClass = 'border-danger';
+        if(element){
+            if(element.value){
+                const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                if(re.test(String(element.value).toLowerCase())){
+                    isInvalid = false;
+                    document.getElementById('subscription-form').classList = 'visually-hidden';
+                    document.getElementById('subscription-thanks').classList.remove('visually-hidden');
+                
+                    var xhttp = new XMLHttpRequest();
+                    xhttp.onreadystatechange = function() {
+                        if (this.readyState == 4 && this.status == 200) {
+                            // window.location.href = "/";
+                        }
+                    };
+                
+                    const json = {
+                        "email" : element.value.toLowerCase()
+                    }
+
+                    xhttp.open("POST", "https://hc9uysiio7.execute-api.us-east-1.amazonaws.com/Prod/api/v1/notify/slack", true);
+                    xhttp.setRequestHeader("Content-type", "application/json");
+                    xhttp.send(JSON.stringify(json));
+                }
+            }
+        }
+
+        if(isInvalid){
+            element.classList.add(invalidBorderClass);
+        }else{
+            if(element.classList.contains(invalidBorderClass))
+                element.classList.remove(invalidBorderClass)
+        }
+    }
+</script>
