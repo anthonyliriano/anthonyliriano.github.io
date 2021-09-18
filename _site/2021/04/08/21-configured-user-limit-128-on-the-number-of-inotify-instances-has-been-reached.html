@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inotify Instances Limit Has Been Reached | Anthony Liriano</title>
+  <meta name="description" content="">
+  <link rel="stylesheet" href="http://localhost:4000/css/main.css">
+  <link rel="canonical" href="http://localhost:4000/2021/04/08/21-configured-user-limit-128-on-the-number-of-inotify-instances-has-been-reached.html">
+  <link rel="alternate" type="application/rss+xml" title="" href="http://localhost:4000/feed.xml">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
+  <link href="https://anthonyliriano.s3.amazonaws.com/prism.css" rel="stylesheet">
+  <script src="https://anthonyliriano.s3.amazonaws.com/prism.js" ></script>
+</head>
+
+  <body>
+    <div class="page-content">
+      <a class="back-link" href="/"> << RETURN HOME</a>
+<article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">Inotify Instances Limit Has Been Reached</h1>
+    <p class="post-meta">
+      Created: <time datetime="2021-04-08T00:00:00-04:00" itemprop="datePublished">Apr 08, 2021</time>
+      
+
+      
+      
+  		
+
+  		
+  		
+
+  		&middot;	<span class="tags" itemprop="tags">
+  				
+  				
+  				
+  				<a href="http://localhost:4000/tagged#kubernetes">#Kubernetes</a>
+  			<a href="http://localhost:4000/tagged#net-5">#.NET 5</a>
+  			<a href="http://localhost:4000/tagged#eks">#EKS</a>
+  			<a href="http://localhost:4000/tagged#linux">#Linux</a>
+  			</span>
+
+  	  
+
+     
+
+    </p>
+  </header>
+  <div class="post-content" itemprop="articleBody">
+    <h2 id="overview">Overview</h2>
+<p>While modifying one of our Kubernetes Deployments that caused a pod restart, we started receiving the System.IO.IOException below. The pod would not go into the ready state and would continue to restart. This was spread through our namespaces and would resufarce everytime we restarted a pod or scaled a deployment.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Unhandled exception. System.IO.IOException: The configured user limit (128) on the number of inotify instances has been reached, or the per-process limit on the number of open file descriptors has been reached.
+   at System.IO.FileSystemWatcher.StartRaisingEvents()
+   at System.IO.FileSystemWatcher.StartRaisingEventsIfNotDisposed()
+   at System.IO.FileSystemWatcher.set_EnableRaisingEvents(Boolean value)
+   at Microsoft.Extensions.FileProviders.Physical.PhysicalFilesWatcher.TryEnableFileSystemWatcher()
+   at Microsoft.Extensions.FileProviders.Physical.PhysicalFilesWatcher.CreateFileChangeToken(String filter)
+   at Microsoft.Extensions.FileProviders.PhysicalFileProvider.Watch(String filter)
+   at Microsoft.Extensions.Configuration.FileConfigurationProvider.&lt;.ctor&gt;b__1_0()
+   at Microsoft.Extensions.Primitives.ChangeToken.OnChange(Func`1 changeTokenProducer, Action changeTokenConsumer)
+   at Microsoft.Extensions.Configuration.FileConfigurationProvider..ctor(FileConfigurationSource source)
+   at Microsoft.Extensions.Configuration.Json.JsonConfigurationSource.Build(IConfigurationBuilder builder)
+   at Microsoft.Extensions.Configuration.ConfigurationBuilder.Build()
+   at Microsoft.AspNetCore.Hosting.WebHostBuilder.BuildCommonServices(AggregateException&amp; hostingStartupErrors)
+   at Microsoft.AspNetCore.Hosting.WebHostBuilder.Build()
+</code></pre></div></div>
+
+<h2 id="finding-the-solution">Finding the Solution</h2>
+<p>After looking around, everything was pointing to the root issue being that the Kubernetes cluster was running out of inotify resources at the OS level. The OS Resource limits are defined by fs.inotify.max_user_watches and fs.inotify.max_user_instances environment variables.</p>
+
+<p>to view the inotify resource limits, execute into a pod in the cluster and run sysctl fs.inotify. The values may vary depending on the OS.</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@sdsswe-5bcb94bbf4-9jtr5:/app#  sysctl fs.inotify
+fs.inotify.max_queued_events = 16384
+fs.inotify.max_user_instances = 128
+fs.inotify.max_user_watches = 524288
+</code></pre></div></div>
+
+<h3 id="temporary-fix---short-term">Temporary Fix - Short Term</h3>
+<p>Increase the allocated inotify resources. From what I understand this can’t be modified via Dockerfile so it must be done directly on the Virtual Machine.</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>echo fs.inotify.max_user_instances=524288 | sudo tee -a /etc/sysctl.conf &amp;&amp; sudo sysctl -p
+</code></pre></div></div>
+
+<h3 id="what-worked-for-us---long-term">What Worked For Us - Long Term</h3>
+<p>After some searching, it seems that this was being caused by our use of the CreateDefaultBuilder in Program.cs, there’s setting within the CreateDefaultBuilder that we cannot override that is setting our AppSettings.Json files to reloadOnChange. https://github.com/dotnet/runtime/blob/release/5.0/src/libraries/Microsoft.Extensions.Hosting/src/Host.cs#L74-L77</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        public static IHostBuilder CreateHostBuilder(string[] args) =&gt;
+            new HostBuilder()
+                .ConfigureWebHostDefaults(webBuilder =&gt;
+                {
+                    webBuilder.UseStartup&lt;Startup&gt;();
+                    webBuilder.UseKestrel();
+                }).ConfigureLogging(logging =&gt;
+                {
+                    logging.ClearProviders();
+                    logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                }).ConfigureAppConfiguration((context, config) =&gt;
+                {
+                    config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+                    config.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false);
+                })
+                .UseNLog();
+</code></pre></div></div>
+<h2 id="why">Why?</h2>
+<p>I still have a few questions, that I couldn’t find the answer to. Let me know if you have answers?</p>
+<ul>
+  <li>If we’re not changing the AppSettings.Json file within the Docker container, why is realoded on change causing this issue?</li>
+</ul>
+
+  </div>
+  <hr>
+  
+</article>
+
+      <div class="copyright">
+        <p>&copy; 2021 <a href="https://AnthonyLiriano.com"><strong>anthonyliriano.com</strong></a> </p>
+      </div>
+    </div>
+    
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-BCMQ5MQD5S"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-BCMQ5MQD5S');
+</script>
+
+  </body>
+
+</html>

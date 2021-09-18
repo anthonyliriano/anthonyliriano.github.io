@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title></title>
+    <description></description>
+    <link>http://localhost:4000/</link>
+    <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Sat, 18 Sep 2021 11:27:30 -0400</pubDate>
+    <lastBuildDate>Sat, 18 Sep 2021 11:27:30 -0400</lastBuildDate>
+    <generator>Jekyll v3.9.1</generator>
+    
+      <item>
+        <title>Serverless .NET 5 Web API 🔥 🔥</title>
+        <description>&lt;div class=&quot;row&quot;&gt;
+    &lt;div class=&quot;col-auto mx-auto&quot;&gt;
+        &lt;img src=&quot;https://anthonyliriano.s3.amazonaws.com/lambda-deployment.gif&quot; /&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;p&gt;AWS Lambda functions allow developers to run code without creating or managing highly-available infrastructure. As of the creation of this post, there are two ways to deploy your source code as a Lambda Function. Creating a .ZIP archive or packaging the application as docker image.&lt;/p&gt;
+
+&lt;p&gt;Lambda functions can be used as triggers for other aws resources (e.g a file is uploaded to an S3 bucket). They can also consumed by web or mobile applications using something like a RESTful API.&lt;/p&gt;
+
+&lt;p&gt;In this post, I’ll walk through setting up a .NET 5 Web API as a Lambda function and exposing the API using Amazon API Gateway.&lt;/p&gt;
+
+&lt;p&gt;As always, if you know of a better method for the problems below, find a mistake, have the answer to a question below let me hear about it, i’ll update the post &lt;a href=&quot;/contact&quot; target=&quot;_blank&quot;&gt;Contact Form&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;requirements&quot;&gt;Requirements&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;AWS Account&lt;/li&gt;
+  &lt;li&gt;AWS CLI 2&lt;/li&gt;
+  &lt;li&gt;Visual Studio 2019&lt;/li&gt;
+  &lt;li&gt;.NET 5 Framework&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;project-setup&quot;&gt;Project Setup&lt;/h3&gt;
+
+&lt;p&gt;Before you start, you’ll want to setup an S3 bucket in the region that makes sense to you (I’m using us-east-1). You can accomplish this by either using the AWS Console or the AWS CLI.&lt;/p&gt;
+&lt;pre&gt;
+&lt;code class=&quot;language-bash&quot;&gt;aws s3api create-bucket --bucket firstlambda.test001 --region us-east-1&lt;/code&gt;
+&lt;/pre&gt;
+
+&lt;p&gt;After creating the S3 bucket, you’ll want to have the &lt;i&gt;Lambda ASP.NET Core Web API (.NET 5 Container Image)&lt;/i&gt; template installed locally. You can check if you have this installed by running the commands below..&lt;/p&gt;
+
+&lt;div class=&quot;row mb-2&quot;&gt;
+    &lt;div class=&quot;col&quot;&gt;
+&lt;pre&gt;
+&lt;code class=&quot;language-PowerShell&quot;&gt;dotnet new -l&lt;/code&gt;
+&lt;/pre&gt;
+&lt;div&gt;
+&lt;pre&gt;
+&lt;code class=&quot;language-text&quot;&gt;Lambda ASP.NET Core Web API                           serverless.AspNetCoreWebAPI                   [C#],F#     AWS/Lambda/Serverless 
+Lambda ASP.NET Core Web API (.NET 5 Container Image)  serverless.image.AspNetCoreWebAPI             [C#],F#     AWS/Lambda/Serverless 
+Lambda ASP.NET Core Web Application with Razor Pages  serverless.AspNetCoreWebApp                   [C#]        AWS/Lambda/Serverless 
+Serverless Detect Image Labels                        serverless.DetectImageLabels                  [C#],F#     AWS/Lambda/Serverless 
+Lambda DynamoDB Blog API                              serverless.DynamoDBBlogAPI                    [C#]        AWS/Lambda/Serverless 
+Lambda Empty Serverless                               serverless.EmptyServerless                    [C#],F#     AWS/Lambda/Serverless 
+Lambda Empty Serverless (.NET 5 Container Image)      serverless.image.EmptyServerless              [C#],F#     AWS/Lambda/Serverless 
+Lambda Giraffe Web App                                serverless.Giraffe                            F#          AWS/Lambda/Serverless 
+Serverless Simple S3 Function                         serverless.S3                                 [C#],F#     AWS/Lambda/Serverless 
+Step Functions Hello World                            serverless.StepFunctionsHelloWorld            [C#],F#     AWS/Lambda/Serverless 
+.....&lt;/code&gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;row&quot;&gt;
+    &lt;div class=&quot;col&quot;&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;p&gt;You’ll then want to create the project specifying the name of project below.&lt;/p&gt;
+&lt;div class=&quot;row mt-3&quot;&gt;
+    &lt;div class=&quot;col&quot;&gt;
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;dotnet new install -g Amazon.Lambda.Templates&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;p&gt;After installing the templates, create the project&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;dotnet new serverless.image.AspNetCoreWebAPI --name FirstLambda&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;project-structure&quot;&gt;Project Structure&lt;/h3&gt;
+&lt;p&gt;The structure below is what the template should have generated. If you have been working with .NET Web API Projects the Program.cs file should sound familiar. In this template, there are two files: LambdaEntryPoint.cs, LocalEntryPoint.cs used similarly to the Program.cs file.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;LambdaEntryPoint.cs - The “lambda program.cs” file for the application running as a lambda function.&lt;/li&gt;
+  &lt;li&gt;LocalEntryPoint.cs -  The “local program.cs” file that comes with the standard template. (Used locally)&lt;/li&gt;
+  &lt;li&gt;aws-lambda-tools-defaults.json - set the options in this file for Lambda tooling. For example, the timeout period for the lambda function.&lt;/li&gt;
+  &lt;li&gt;serverless.template&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div class=&quot;row&quot;&gt;
+    &lt;div class=&quot;col&quot;&gt;
+&lt;pre&gt;
+&lt;code class=&quot;language-markup&quot;&gt;FirstLambda
+├── src
+│   └── FirstLambda
+│       ├── Controllers
+│       │   └── ValuesController.cs
+│       ├── Dockerfile
+│       ├── FirstLambda.csproj
+│       ├── LambdaEntryPoint.cs
+│       ├── LocalEntryPoint.cs
+│       ├── Readme.md
+│       ├── Startup.cs
+│       ├── appsettings.Development.json
+│       ├── appsettings.json
+│       ├── aws-lambda-tools-defaults.json
+│       └── serverless.template
+└── test
+    └── FirstLambda.Tests
+        ├── FirstLambda.Tests.csproj
+        ├── SampleRequests
+        │   └── ValuesController-Get.json
+        ├── ValuesControllerTests.cs
+        └── appsettings.json
+
+6 directories, 15 files&lt;/code&gt;
+&lt;/pre&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;containairze-the-application&quot;&gt;Containairze The Application&lt;/h3&gt;
+&lt;p&gt;Looking at the Dockerfile the template contains, you’ll find The docker image is built from the build output generated after the application is built on your machine. Once built, the docker image copies the binaries from bin/Release/net5.0/linux-x64/publish.&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-Dockerfile&quot;&gt;FROM public.ecr.aws/lambda/dotnet:5.0
+
+WORKDIR /var/task
+
+COPY &quot;bin/Release/net5.0/linux-x64/publish&quot;  .
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Optionally, you can modify the Dockerfile to build the .NET Lambda project inside the image.&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-Dockerfile&quot;&gt;FROM public.ecr.aws/lambda/dotnet:5.0 AS base 
+
+FROM mcr.microsoft.com/dotnet/sdk:5.0-focal AS build 
+WORKDIR /src
+COPY FirstLambda.csproj FirstLambda/
+RUN dotnet restore FirstLambda/FirstLambda.csproj --source https://api.nuget.org/v3/index.json
+
+WORKDIR /src/FirstLambda
+COPY . .
+RUN dotnet build FirstLambda.csproj -c Release -o /app
+
+FROM build AS publish
+RUN dotnet publish FirstLambda.csproj -c Release --runtime linux-x64 --self-contained false -o /app -p:PublishReadyToRun=true 
+
+FROM base AS final
+WORKDIR /var/task
+COPY --from=publish /app .
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div class=&quot;row bg-dark p-1&quot;&gt;
+    &lt;div class=&quot;col text-white py-2&quot;&gt;
+        &lt;h3 class=&quot;m-1&quot;&gt;
+            👋 PLZ SUBSCRIBE
+        &lt;/h3&gt;
+        &lt;h6 class=&quot;px-3 my-0 fw-light mb-2&quot;&gt;
+            No Spam. Unsubscribe easily at any time.
+        &lt;/h6&gt;
+        &lt;div class=&quot;row px-3&quot; id=&quot;subscription-form&quot;&gt;
+            &lt;div class=&quot;col-lg-5 col-md-5 col-sm-12 py-2&quot;&gt;
+                &lt;input class=&quot;form-control form-control-lg &quot; id=&quot;email&quot; type=&quot;email&quot; placeholder=&quot;name@example.com&quot; aria-label=&quot;.form-control-lg example&quot; /&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;col-lg-4 col-md-4 col-sm-12 py-2&quot;&gt;
+                &lt;button type=&quot;button&quot; class=&quot;btn btn-light btn-lg&quot; onclick=&quot;Subscribe()&quot;&gt;SUBSCRIBE&lt;/button&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;row px-3 visually-hidden bg-light text-dark justify-content-center&quot; id=&quot;subscription-thanks&quot;&gt;
+            &lt;div class=&quot;col-lg-7 col-md-7 col-sm-12 py-2 text-center&quot;&gt;
+               &lt;h3 class=&quot;my-1 fw-light&quot;&gt; 🎊 🎉 Thanks For Your Subscription! &lt;/h3&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script type=&quot;text/javascript&quot;&gt;
+    function Subscribe() {
+        var isInvalid = true;
+        var element = document.getElementById('email');
+        var invalidBorderClass = 'border-danger';
+        if(element){
+            if(element.value){
+                const re = /^(([^&lt;&gt;()[\]\\.,;:\s@&quot;]+(\.[^&lt;&gt;()[\]\\.,;:\s@&quot;]+)*)|(&quot;.+&quot;))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                if(re.test(String(element.value).toLowerCase())){
+                    isInvalid = false;
+                    document.getElementById('subscription-form').classList = 'visually-hidden';
+                    document.getElementById('subscription-thanks').classList.remove('visually-hidden');
+                
+                    var xhttp = new XMLHttpRequest();
+                    xhttp.onreadystatechange = function() {
+                        if (this.readyState == 4 &amp;&amp; this.status == 200) {
+                            // window.location.href = &quot;/&quot;;
+                        }
+                    };
+                
+                    const json = {
+                        &quot;email&quot; : element.value.toLowerCase()
+                    }
+
+                    xhttp.open(&quot;POST&quot;, &quot;https://hc9uysiio7.execute-api.us-east-1.amazonaws.com/Prod/api/v1/notify/slack&quot;, true);
+                    xhttp.setRequestHeader(&quot;Content-type&quot;, &quot;application/json&quot;);
+                    xhttp.send(JSON.stringify(json));
+                }
+            }
+        }
+
+        if(isInvalid){
+            element.classList.add(invalidBorderClass);
+        }else{
+            if(element.classList.contains(invalidBorderClass))
+                element.classList.remove(invalidBorderClass)
+        }
+    }
+&lt;/script&gt;
+
+&lt;h3 id=&quot;publish-application&quot;&gt;Publish Application&lt;/h3&gt;
+&lt;p&gt;Now, we’ll want to publish the application and examine the outputs… After running the command below, You’ll be prompted for the name of the s3 bucket you created at the begining of the post a name for a cloudformation resource.&lt;/p&gt;
+&lt;div class=&quot;row&quot;&gt;
+    &lt;div class=&quot;col&quot;&gt;
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;dotnet lambda deploy-serverless --region us-east-1
+.....
+Stack finished updating with status: CREATE_COMPLETE
+   
+Output Name                    Value                                             
+------------------------------ --------------------------------------------------
+ApiURL                         https://removed.execute-api.us-east-1.amazonaws.com/Prod/
+Stack finished updating with status: CREATE_COMPLETE
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;issues-i-encountered-&quot;&gt;‘Issues I Encountered’ 🤬&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;If you don’t specify the correct region, your aws cli commands tend to time out.&lt;/li&gt;
+  &lt;li&gt;You must build your Docker image from public.ecr.aws/lambda/dotnet:5.0&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+        <pubDate>Sat, 01 May 2021 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2021/05/01/21-Serverless+.NET5+API.html</link>
+        <guid isPermaLink="true">http://localhost:4000/2021/05/01/21-Serverless+.NET5+API.html</guid>
+        
+        <category>Serverless</category>
+        
+        <category>AWS</category>
+        
+        <category>.NET5</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Kubernetes ConfigMap &amp; .NET 5 AppSettings.Json</title>
+        <description>&lt;h2 id=&quot;overview&quot;&gt;Overview&lt;/h2&gt;
+
+&lt;p&gt;A Kubernetes ConfigMap is used to store non-confidential data in key-value pairs. The ConfigMap can then be consumed as environment variables, command-line arguments, or as configuration files in a volume. ConfigMaps can also be referenced by multiple pods.&lt;/p&gt;
+
+&lt;p&gt;Appsettings.Json is the default configuration file used in .NET to store all of the application settings.&lt;/p&gt;
+
+&lt;p&gt;As we’re starting to adopt Kubernetes, we want to start using ConfigMaps to store application configuration. By using ConfigMaps, we hope  we’ll be able to reuse our application configuration files and reduce dupplication.&lt;/p&gt;
+
+&lt;p&gt;Currently, any changes made to ConfigMap would require the pod to be restarted in order for the application to read the new changes.
+There’s an enhancement being considered to allow reloadOnChange option to work in Linux enviroments, feature being tracked here:  &lt;a href=&quot;https://github.com/dotnet/runtime/issues/36091&quot;&gt;Github Issue #36091&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;To view or reference the .NET Project created for this demonstration please go to  &lt;a href=&quot;https://github.com/anthonyliriano/.NET5-AppSettings-ConfigMap-Demo&quot;&gt;Github Repository&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;configuring-the-net-5-project&quot;&gt;Configuring The .NET 5 Project&lt;/h2&gt;
+&lt;p&gt;For this demonstration, I created an empty ASP.NET CORE Web API Project targetting the .NET 5 Framework.&lt;/p&gt;
+
+&lt;p&gt;I modified the Program.cs file so that the application is not using the default web host builder and recognizes the appsettings.k8s.json file. Here’s what my HostBuilder method looks like like&lt;/p&gt;
+
+&lt;div class=&quot;language-c# highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IHostBuilder&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;CreateHostBuilder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;HostBuilder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ConfigureWebHostDefaults&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;webBuilder&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;webBuilder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UseStartup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Startup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;();&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;webBuilder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;UseKestrel&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ConfigureLogging&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;logging&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;logging&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ClearProviders&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;logging&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;SetMinimumLevel&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;LogLevel&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Trace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ConfigureAppConfiguration&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;config&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;config&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;AddJsonFile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;appsettings.json&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;optional&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;reloadOnChange&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;config&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;AddJsonFile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;appsettings.Development.json&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;optional&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;reloadOnChange&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;config&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;AddJsonFile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;appsettings.k8s.json&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;optional&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;reloadOnChange&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;To validate the changes have worked, I’m exposing the Appsettings file via a controller. I created the AppSettingsController.cs with a simple HTTP GET method.&lt;/p&gt;
+
+&lt;div class=&quot;language-c# highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;Route&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;api/settings&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)]&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ApiController&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;AppSettingsController&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ControllerBase&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;readonly&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IConfiguration&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_configuration&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;AppSettingsController&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;IConfiguration&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;config&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;_configuration&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;config&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;HttpGet&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IActionResult&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;GetConfigurationSettings&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Ok&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_configuration&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;GetSection&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;AppConfiguration&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;GetChildren&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;dockerfile&quot;&gt;Dockerfile&lt;/h2&gt;
+&lt;p&gt;Containarize the application&lt;/p&gt;
+&lt;div class=&quot;language-dockerfile highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; mcr.microsoft.com/dotnet/sdk:5.0-focal AS base &lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;ENV&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; ASPNETCORE_URLS http://+:83&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;EXPOSE&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; 83&lt;/span&gt;
+
+&lt;span class=&quot;c&quot;&gt;# Set TimeZone&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ENV&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; TZ America/New_York&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; mcr.microsoft.com/dotnet/sdk:5.0-focal AS build &lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;WORKDIR&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; /src&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;COPY&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; NET5-AppSettings-ConfigMap-Demo.csproj NET5-AppSettings-ConfigMap-Demo/&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;dotnet restore NET5-AppSettings-ConfigMap-Demo/NET5-AppSettings-ConfigMap-Demo.csproj &lt;span class=&quot;nt&quot;&gt;--source&lt;/span&gt; https://api.nuget.org/v3/index.json
+&lt;span class=&quot;k&quot;&gt;WORKDIR&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; /src/NET5-AppSettings-ConfigMap-Demo&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;COPY&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; . .&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;dotnet build NET5-AppSettings-ConfigMap-Demo.csproj &lt;span class=&quot;nt&quot;&gt;-c&lt;/span&gt; Release &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; /app
+
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; build AS publish&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;dotnet publish NET5-AppSettings-ConfigMap-Demo.csproj &lt;span class=&quot;nt&quot;&gt;-c&lt;/span&gt; Release &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; /app
+
+
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; base AS final&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;WORKDIR&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; /app&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;COPY&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; --from=publish /app .&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ENTRYPOINT&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; [&quot;dotnet&quot;, &quot;NET5-AppSettings-ConfigMap-Demo.dll&quot;]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;configmap&quot;&gt;ConfigMap&lt;/h2&gt;
+&lt;p&gt;There are several ways we can consume ConfigMaps inside pods. In this scenario we’ll be adding the ConfigMap as a readonly file. In order for this to work, we’ll want to structure the Configmap so that the data propery contains both the name of the file and the contents?&lt;/p&gt;
+&lt;div class=&quot;language-yaml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;na&quot;&gt;apiVersion&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;v1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;kind&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;ConfigMap&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;metadata&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;s&quot;&gt;appsettings.k8s.json&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;pi&quot;&gt;|-&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;s&quot;&gt;&quot;Logging&quot;: {&lt;/span&gt;
+        &lt;span class=&quot;s&quot;&gt;&quot;LogLevel&quot;: {&lt;/span&gt;
+          &lt;span class=&quot;s&quot;&gt;&quot;Default&quot;: &quot;Error&quot;,&lt;/span&gt;
+          &lt;span class=&quot;s&quot;&gt;&quot;System&quot;: &quot;Error&quot;,&lt;/span&gt;
+          &lt;span class=&quot;s&quot;&gt;&quot;Microsoft&quot;: &quot;Error&quot;&lt;/span&gt;
+        &lt;span class=&quot;s&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;s&quot;&gt;},&lt;/span&gt;
+      &lt;span class=&quot;s&quot;&gt;&quot;AppConfiguration&quot;: {&lt;/span&gt;
+        &lt;span class=&quot;s&quot;&gt;&quot;DatabaseHost&quot;: &quot;localhost&quot;,&lt;/span&gt;
+        &lt;span class=&quot;s&quot;&gt;&quot;ThirdPartyAPIBaseURL&quot; :  &quot;https://local.somewhere.com/&quot;&lt;/span&gt;
+      &lt;span class=&quot;s&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;h2 id=&quot;deployment&quot;&gt;Deployment&lt;/h2&gt;
+&lt;p&gt;After the ConfigMap is created we need a way to reference the ConfigMap so that the container can read its contents. In the Kubernetes Deployment, we’ll want to include two additional properties volumeMounts and volumes.&lt;/p&gt;
+
+&lt;p&gt;Volume - In short words, this is can be thought of a directory that contains files. There are different types of volumes, here we’re using the configMap type.  In a deployment, the volume is specified in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.spec.volumes&lt;/code&gt;&lt;/p&gt;
+&lt;div class=&quot;language-yaml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;na&quot;&gt;volumes&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;pi&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo-volume&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;configMap&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Volume Mounts - Now that we specified the volume, we’ll want to indicate where we want to mount this volume (“directory”).. In a deployment, the volume is specified in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.spec.containers[*].volumeMounts&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-yaml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;na&quot;&gt;volumeMounts&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;pi&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo-volume&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;mountPath&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/app/appsettings.k8s.json&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;subPath&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings.k8s.json&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Here’s is what the Deployment should look like..&lt;/p&gt;
+&lt;div class=&quot;language-yaml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;na&quot;&gt;kind&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;Deployment&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;apiVersion&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;apps/v1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;metadata&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+  &lt;span class=&quot;na&quot;&gt;namespace&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;default&lt;/span&gt;
+  &lt;span class=&quot;na&quot;&gt;labels&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;k8s-app&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;spec&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;na&quot;&gt;replicas&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+  &lt;span class=&quot;na&quot;&gt;selector&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;matchLabels&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;na&quot;&gt;k8s-app&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+  &lt;span class=&quot;na&quot;&gt;template&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;metadata&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+      &lt;span class=&quot;na&quot;&gt;labels&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;na&quot;&gt;k8s-app&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;spec&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;na&quot;&gt;volumes&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;pi&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo-volume&lt;/span&gt;
+          &lt;span class=&quot;na&quot;&gt;configMap&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+            &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+      &lt;span class=&quot;na&quot;&gt;containers&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;pi&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo&lt;/span&gt;
+          &lt;span class=&quot;na&quot;&gt;image&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;anthonylir/dotnet-appsettings-configmap-demo:1.0.0'&lt;/span&gt;
+          &lt;span class=&quot;na&quot;&gt;volumeMounts&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+            &lt;span class=&quot;pi&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings-demo-volume&lt;/span&gt;
+              &lt;span class=&quot;na&quot;&gt;mountPath&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/app/appsettings.k8s.json&lt;/span&gt;
+              &lt;span class=&quot;na&quot;&gt;subPath&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;appsettings.k8s.json&lt;/span&gt;
+          &lt;span class=&quot;na&quot;&gt;imagePullPolicy&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;Always&lt;/span&gt;
+      &lt;span class=&quot;na&quot;&gt;imagePullSecrets&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;pi&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;regcred&lt;/span&gt;
+
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;verifying&quot;&gt;Verifying&lt;/h2&gt;
+&lt;p&gt;To keep things simple, I am testing by executing within the container and running the curl commands below to verify the response contains the contents of the ConfigMap.&lt;/p&gt;
+
+&lt;p&gt;Execute into the container&lt;/p&gt;
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;kubectl &lt;span class=&quot;nb&quot;&gt;exec&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--stdin&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--tty&lt;/span&gt; appsettings-demo-69cf9684dc-6w28h &lt;span class=&quot;nt&quot;&gt;--&lt;/span&gt; /bin/bash
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Run the curl command inside the container&lt;/p&gt;
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;curl &lt;span class=&quot;nt&quot;&gt;-X&lt;/span&gt; GET localhost:83/api/settings
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Output&lt;/p&gt;
+&lt;div class=&quot;language-json highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+   &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+      &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;key&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;DatabaseHost&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+      &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;path&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;AppConfiguration:DatabaseHost&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+      &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;value&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;prod.somedb.com&quot;&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+   &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+   &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+      &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;key&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;ThirdPartyAPIBaseURL&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+      &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;path&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;AppConfiguration:ThirdPartyAPIBaseURL&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+      &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;value&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;https://prod.somewhere.com/&quot;&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+   &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+</description>
+        <pubDate>Sat, 10 Apr 2021 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2021/04/10/21-kubernetes-configmap-and-.net5-appsettings.html</link>
+        <guid isPermaLink="true">http://localhost:4000/2021/04/10/21-kubernetes-configmap-and-.net5-appsettings.html</guid>
+        
+        <category>Kubernetes</category>
+        
+        <category>.NET5</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Inotify Instances Limit Has Been Reached</title>
+        <description>&lt;h2 id=&quot;overview&quot;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;While modifying one of our Kubernetes Deployments that caused a pod restart, we started receiving the System.IO.IOException below. The pod would not go into the ready state and would continue to restart. This was spread through our namespaces and would resufarce everytime we restarted a pod or scaled a deployment.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Unhandled exception. System.IO.IOException: The configured user limit (128) on the number of inotify instances has been reached, or the per-process limit on the number of open file descriptors has been reached.
+   at System.IO.FileSystemWatcher.StartRaisingEvents()
+   at System.IO.FileSystemWatcher.StartRaisingEventsIfNotDisposed()
+   at System.IO.FileSystemWatcher.set_EnableRaisingEvents(Boolean value)
+   at Microsoft.Extensions.FileProviders.Physical.PhysicalFilesWatcher.TryEnableFileSystemWatcher()
+   at Microsoft.Extensions.FileProviders.Physical.PhysicalFilesWatcher.CreateFileChangeToken(String filter)
+   at Microsoft.Extensions.FileProviders.PhysicalFileProvider.Watch(String filter)
+   at Microsoft.Extensions.Configuration.FileConfigurationProvider.&amp;lt;.ctor&amp;gt;b__1_0()
+   at Microsoft.Extensions.Primitives.ChangeToken.OnChange(Func`1 changeTokenProducer, Action changeTokenConsumer)
+   at Microsoft.Extensions.Configuration.FileConfigurationProvider..ctor(FileConfigurationSource source)
+   at Microsoft.Extensions.Configuration.Json.JsonConfigurationSource.Build(IConfigurationBuilder builder)
+   at Microsoft.Extensions.Configuration.ConfigurationBuilder.Build()
+   at Microsoft.AspNetCore.Hosting.WebHostBuilder.BuildCommonServices(AggregateException&amp;amp; hostingStartupErrors)
+   at Microsoft.AspNetCore.Hosting.WebHostBuilder.Build()
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;finding-the-solution&quot;&gt;Finding the Solution&lt;/h2&gt;
+&lt;p&gt;After looking around, everything was pointing to the root issue being that the Kubernetes cluster was running out of inotify resources at the OS level. The OS Resource limits are defined by fs.inotify.max_user_watches and fs.inotify.max_user_instances environment variables.&lt;/p&gt;
+
+&lt;p&gt;to view the inotify resource limits, execute into a pod in the cluster and run sysctl fs.inotify. The values may vary depending on the OS.&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;root@sdsswe-5bcb94bbf4-9jtr5:/app#  sysctl fs.inotify
+fs.inotify.max_queued_events = 16384
+fs.inotify.max_user_instances = 128
+fs.inotify.max_user_watches = 524288
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;temporary-fix---short-term&quot;&gt;Temporary Fix - Short Term&lt;/h3&gt;
+&lt;p&gt;Increase the allocated inotify resources. From what I understand this can’t be modified via Dockerfile so it must be done directly on the Virtual Machine.&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;echo fs.inotify.max_user_instances=524288 | sudo tee -a /etc/sysctl.conf &amp;amp;&amp;amp; sudo sysctl -p
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;what-worked-for-us---long-term&quot;&gt;What Worked For Us - Long Term&lt;/h3&gt;
+&lt;p&gt;After some searching, it seems that this was being caused by our use of the CreateDefaultBuilder in Program.cs, there’s setting within the CreateDefaultBuilder that we cannot override that is setting our AppSettings.Json files to reloadOnChange. https://github.com/dotnet/runtime/blob/release/5.0/src/libraries/Microsoft.Extensions.Hosting/src/Host.cs#L74-L77&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;        public static IHostBuilder CreateHostBuilder(string[] args) =&amp;gt;
+            new HostBuilder()
+                .ConfigureWebHostDefaults(webBuilder =&amp;gt;
+                {
+                    webBuilder.UseStartup&amp;lt;Startup&amp;gt;();
+                    webBuilder.UseKestrel();
+                }).ConfigureLogging(logging =&amp;gt;
+                {
+                    logging.ClearProviders();
+                    logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                }).ConfigureAppConfiguration((context, config) =&amp;gt;
+                {
+                    config.AddJsonFile(&quot;appsettings.json&quot;, optional: true, reloadOnChange: false);
+                    config.AddJsonFile(&quot;appsettings.Development.json&quot;, optional: true, reloadOnChange: false);
+                })
+                .UseNLog();
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;h2 id=&quot;why&quot;&gt;Why?&lt;/h2&gt;
+&lt;p&gt;I still have a few questions, that I couldn’t find the answer to. Let me know if you have answers?&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;If we’re not changing the AppSettings.Json file within the Docker container, why is realoded on change causing this issue?&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+        <pubDate>Thu, 08 Apr 2021 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2021/04/08/21-configured-user-limit-128-on-the-number-of-inotify-instances-has-been-reached.html</link>
+        <guid isPermaLink="true">http://localhost:4000/2021/04/08/21-configured-user-limit-128-on-the-number-of-inotify-instances-has-been-reached.html</guid>
+        
+        <category>Kubernetes</category>
+        
+        <category>.NET 5</category>
+        
+        <category>EKS</category>
+        
+        <category>Linux</category>
+        
+        
+      </item>
+    
+  </channel>
+</rss>
