@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Serverless .NET 5 Web API 🔥 🔥 | Anthony Liriano</title>
+  <meta name="description" content="">
+  <link rel="stylesheet" href="http://localhost:4000/css/main.css">
+  <link rel="canonical" href="http://localhost:4000/2021/05/01/21-Serverless+.NET5+API.html">
+  <link rel="alternate" type="application/rss+xml" title="" href="http://localhost:4000/feed.xml">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
+  <link href="https://anthonyliriano.s3.amazonaws.com/prism.css" rel="stylesheet">
+  <script src="https://anthonyliriano.s3.amazonaws.com/prism.js" ></script>
+</head>
+
+  <body>
+    <div class="page-content">
+      <a class="back-link" href="/"> << RETURN HOME</a>
+<article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">Serverless .NET 5 Web API 🔥 🔥</h1>
+    <p class="post-meta">
+      Created: <time datetime="2021-05-01T00:00:00-04:00" itemprop="datePublished">May 01, 2021</time>
+      
+
+      
+       (Last Update 05-06-21) 
+  		
+
+  		
+  		
+
+  		&middot;	<span class="tags" itemprop="tags">
+  				
+  				
+  				<a href="http://localhost:4000/tagged#serverless">#Serverless</a>
+  			<a href="http://localhost:4000/tagged#aws">#AWS</a>
+  			<a href="http://localhost:4000/tagged#net5">#.NET5</a>
+  			</span>
+
+  	  
+
+     
+
+    </p>
+  </header>
+  <div class="post-content" itemprop="articleBody">
+    <div class="row">
+    <div class="col-auto mx-auto">
+        <img src="https://anthonyliriano.s3.amazonaws.com/lambda-deployment.gif" />
+    </div>
+</div>
+
+<p>AWS Lambda functions allow developers to run code without creating or managing highly-available infrastructure. As of the creation of this post, there are two ways to deploy your source code as a Lambda Function. Creating a .ZIP archive or packaging the application as docker image.</p>
+
+<p>Lambda functions can be used as triggers for other aws resources (e.g a file is uploaded to an S3 bucket). They can also consumed by web or mobile applications using something like a RESTful API.</p>
+
+<p>In this post, I’ll walk through setting up a .NET 5 Web API as a Lambda function and exposing the API using Amazon API Gateway.</p>
+
+<p>As always, if you know of a better method for the problems below, find a mistake, have the answer to a question below let me hear about it, i’ll update the post <a href="/contact" target="_blank">Contact Form</a></p>
+
+<h3 id="requirements">Requirements</h3>
+
+<ul>
+  <li>AWS Account</li>
+  <li>AWS CLI 2</li>
+  <li>Visual Studio 2019</li>
+  <li>.NET 5 Framework</li>
+</ul>
+
+<h3 id="project-setup">Project Setup</h3>
+
+<p>Before you start, you’ll want to setup an S3 bucket in the region that makes sense to you (I’m using us-east-1). You can accomplish this by either using the AWS Console or the AWS CLI.</p>
+<pre>
+<code class="language-bash">aws s3api create-bucket --bucket firstlambda.test001 --region us-east-1</code>
+</pre>
+
+<p>After creating the S3 bucket, you’ll want to have the <i>Lambda ASP.NET Core Web API (.NET 5 Container Image)</i> template installed locally. You can check if you have this installed by running the commands below..</p>
+
+<div class="row mb-2">
+    <div class="col">
+<pre>
+<code class="language-PowerShell">dotnet new -l</code>
+</pre>
+<div>
+<pre>
+<code class="language-text">Lambda ASP.NET Core Web API                           serverless.AspNetCoreWebAPI                   [C#],F#     AWS/Lambda/Serverless 
+Lambda ASP.NET Core Web API (.NET 5 Container Image)  serverless.image.AspNetCoreWebAPI             [C#],F#     AWS/Lambda/Serverless 
+Lambda ASP.NET Core Web Application with Razor Pages  serverless.AspNetCoreWebApp                   [C#]        AWS/Lambda/Serverless 
+Serverless Detect Image Labels                        serverless.DetectImageLabels                  [C#],F#     AWS/Lambda/Serverless 
+Lambda DynamoDB Blog API                              serverless.DynamoDBBlogAPI                    [C#]        AWS/Lambda/Serverless 
+Lambda Empty Serverless                               serverless.EmptyServerless                    [C#],F#     AWS/Lambda/Serverless 
+Lambda Empty Serverless (.NET 5 Container Image)      serverless.image.EmptyServerless              [C#],F#     AWS/Lambda/Serverless 
+Lambda Giraffe Web App                                serverless.Giraffe                            F#          AWS/Lambda/Serverless 
+Serverless Simple S3 Function                         serverless.S3                                 [C#],F#     AWS/Lambda/Serverless 
+Step Functions Hello World                            serverless.StepFunctionsHelloWorld            [C#],F#     AWS/Lambda/Serverless 
+.....</code>
+</pre>
+</div>
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+    </div>
+</div>
+
+<p>You’ll then want to create the project specifying the name of project below.</p>
+<div class="row mt-3">
+    <div class="col">
+<pre><code class="language-bash">dotnet new install -g Amazon.Lambda.Templates</code></pre>
+    </div>
+</div>
+
+<p>After installing the templates, create the project</p>
+<pre><code class="language-bash">dotnet new serverless.image.AspNetCoreWebAPI --name FirstLambda</code></pre>
+
+<h3 id="project-structure">Project Structure</h3>
+<p>The structure below is what the template should have generated. If you have been working with .NET Web API Projects the Program.cs file should sound familiar. In this template, there are two files: LambdaEntryPoint.cs, LocalEntryPoint.cs used similarly to the Program.cs file.</p>
+
+<ul>
+  <li>LambdaEntryPoint.cs - The “lambda program.cs” file for the application running as a lambda function.</li>
+  <li>LocalEntryPoint.cs -  The “local program.cs” file that comes with the standard template. (Used locally)</li>
+  <li>aws-lambda-tools-defaults.json - set the options in this file for Lambda tooling. For example, the timeout period for the lambda function.</li>
+  <li>serverless.template</li>
+</ul>
+
+<div class="row">
+    <div class="col">
+<pre>
+<code class="language-markup">FirstLambda
+├── src
+│   └── FirstLambda
+│       ├── Controllers
+│       │   └── ValuesController.cs
+│       ├── Dockerfile
+│       ├── FirstLambda.csproj
+│       ├── LambdaEntryPoint.cs
+│       ├── LocalEntryPoint.cs
+│       ├── Readme.md
+│       ├── Startup.cs
+│       ├── appsettings.Development.json
+│       ├── appsettings.json
+│       ├── aws-lambda-tools-defaults.json
+│       └── serverless.template
+└── test
+    └── FirstLambda.Tests
+        ├── FirstLambda.Tests.csproj
+        ├── SampleRequests
+        │   └── ValuesController-Get.json
+        ├── ValuesControllerTests.cs
+        └── appsettings.json
+
+6 directories, 15 files</code>
+</pre>
+    </div>
+</div>
+
+<h3 id="containairze-the-application">Containairze The Application</h3>
+<p>Looking at the Dockerfile the template contains, you’ll find The docker image is built from the build output generated after the application is built on your machine. Once built, the docker image copies the binaries from bin/Release/net5.0/linux-x64/publish.</p>
+<pre><code class="language-Dockerfile">FROM public.ecr.aws/lambda/dotnet:5.0
+
+WORKDIR /var/task
+
+COPY "bin/Release/net5.0/linux-x64/publish"  .
+</code></pre>
+
+<p>Optionally, you can modify the Dockerfile to build the .NET Lambda project inside the image.</p>
+<pre><code class="language-Dockerfile">FROM public.ecr.aws/lambda/dotnet:5.0 AS base 
+
+FROM mcr.microsoft.com/dotnet/sdk:5.0-focal AS build 
+WORKDIR /src
+COPY FirstLambda.csproj FirstLambda/
+RUN dotnet restore FirstLambda/FirstLambda.csproj --source https://api.nuget.org/v3/index.json
+
+WORKDIR /src/FirstLambda
+COPY . .
+RUN dotnet build FirstLambda.csproj -c Release -o /app
+
+FROM build AS publish
+RUN dotnet publish FirstLambda.csproj -c Release --runtime linux-x64 --self-contained false -o /app -p:PublishReadyToRun=true 
+
+FROM base AS final
+WORKDIR /var/task
+COPY --from=publish /app .
+</code></pre>
+
+<div class="row bg-dark p-1">
+    <div class="col text-white py-2">
+        <h3 class="m-1">
+            👋 PLZ SUBSCRIBE
+        </h3>
+        <h6 class="px-3 my-0 fw-light mb-2">
+            No Spam. Unsubscribe easily at any time.
+        </h6>
+        <div class="row px-3" id="subscription-form">
+            <div class="col-lg-5 col-md-5 col-sm-12 py-2">
+                <input class="form-control form-control-lg " id="email" type="email" placeholder="name@example.com" aria-label=".form-control-lg example" />
+            </div>
+            <div class="col-lg-4 col-md-4 col-sm-12 py-2">
+                <button type="button" class="btn btn-light btn-lg" onclick="Subscribe()">SUBSCRIBE</button>
+            </div>
+        </div>
+        <div class="row px-3 visually-hidden bg-light text-dark justify-content-center" id="subscription-thanks">
+            <div class="col-lg-7 col-md-7 col-sm-12 py-2 text-center">
+               <h3 class="my-1 fw-light"> 🎊 🎉 Thanks For Your Subscription! </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    function Subscribe() {
+        var isInvalid = true;
+        var element = document.getElementById('email');
+        var invalidBorderClass = 'border-danger';
+        if(element){
+            if(element.value){
+                const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                if(re.test(String(element.value).toLowerCase())){
+                    isInvalid = false;
+                    document.getElementById('subscription-form').classList = 'visually-hidden';
+                    document.getElementById('subscription-thanks').classList.remove('visually-hidden');
+                
+                    var xhttp = new XMLHttpRequest();
+                    xhttp.onreadystatechange = function() {
+                        if (this.readyState == 4 && this.status == 200) {
+                            // window.location.href = "/";
+                        }
+                    };
+                
+                    const json = {
+                        "email" : element.value.toLowerCase()
+                    }
+
+                    xhttp.open("POST", "https://hc9uysiio7.execute-api.us-east-1.amazonaws.com/Prod/api/v1/notify/slack", true);
+                    xhttp.setRequestHeader("Content-type", "application/json");
+                    xhttp.send(JSON.stringify(json));
+                }
+            }
+        }
+
+        if(isInvalid){
+            element.classList.add(invalidBorderClass);
+        }else{
+            if(element.classList.contains(invalidBorderClass))
+                element.classList.remove(invalidBorderClass)
+        }
+    }
+</script>
+
+<h3 id="publish-application">Publish Application</h3>
+<p>Now, we’ll want to publish the application and examine the outputs… After running the command below, You’ll be prompted for the name of the s3 bucket you created at the begining of the post a name for a cloudformation resource.</p>
+<div class="row">
+    <div class="col">
+<pre><code class="language-bash">dotnet lambda deploy-serverless --region us-east-1
+.....
+Stack finished updating with status: CREATE_COMPLETE
+   
+Output Name                    Value                                             
+------------------------------ --------------------------------------------------
+ApiURL                         https://removed.execute-api.us-east-1.amazonaws.com/Prod/
+Stack finished updating with status: CREATE_COMPLETE
+</code></pre>
+    </div>
+</div>
+
+<h3 id="issues-i-encountered-">‘Issues I Encountered’ 🤬</h3>
+<ul>
+  <li>If you don’t specify the correct region, your aws cli commands tend to time out.</li>
+  <li>You must build your Docker image from public.ecr.aws/lambda/dotnet:5.0</li>
+</ul>
+
+
+  </div>
+  <hr>
+  
+</article>
+
+      <div class="copyright">
+        <p>&copy; 2021 <a href="https://AnthonyLiriano.com"><strong>anthonyliriano.com</strong></a> </p>
+      </div>
+    </div>
+    
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-BCMQ5MQD5S"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-BCMQ5MQD5S');
+</script>
+
+  </body>
+
+</html>

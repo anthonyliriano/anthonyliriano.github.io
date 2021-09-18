@@ -1,0 +1,44 @@
+---
+layout: default
+title: Projects
+---
+<section class="site-header">
+    <h1 class="smallcap"><a class="site-title" href="{{ '/' | prepend: site.baseurl | prepend: site.url }}">
+        Anthony Liriano
+    </a></h1>
+    {% include nav.html %}
+</section>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col">
+            <h2 class="smallcap">RECENT PROJECTS</h2>
+            <p>
+                Projects that I have worked to help small businesses leverage technology and others as experiments.
+            </p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-8 col-12">
+        {% for project in site.projects %}
+        <div class="card bg-light border-bottom border-3 project my-2">
+            <div class="card-body p-2">
+              <h5 class="card-title">
+                <div class="row justify-content-between">
+                    <div class="col-12 col-lg-6 fw-bolder">
+                        {{project.title}}
+                    </div>
+                    <div class="col">
+                        <a href="{{project.url}}" class="card-link float-lg-end">Read More</a>
+                    </div>
+                </div>
+              </h5>
+              <h6 class="card-subtitle mb-2 text-muted">
+                {{project.techStack}}</h6>
+              <p class="card-text project-desc">{{project.summary}}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+    </div>
+</div>
+

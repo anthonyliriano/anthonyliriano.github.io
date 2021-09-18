@@ -1,0 +1,44 @@
+---
+layout: default
+---
+<section class="site-header">
+  <h1 class="smallcap"><a class="site-title" href="{{ '/' | prepend: site.baseurl | prepend: site.url }}">
+      Anthony Liriano
+  </a></h1>
+  {% include nav.html %}
+</section>
+<article class="project" itemscope itemtype="https://schema.org/WebApplication">
+  <header class="project-header">
+    <h1 class="project-title fw-bolder border-bottom border-4 mb-0" itemprop="name">{{ page.title }}</h1>
+    <p class="project-meta fw-light">
+      Created: <time datetime="{{ page.date | date_to_xmlschema }}" itemprop="datePublished">{{ page.date | date: "%b %d, %Y" }}</time>
+      {% if page.author %} &middot; <span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">{{ page.author }}</span></span>{% endif %}
+
+      {% assign post = page %}
+      {% if post.dateModified != null  %} (Last Update {{ post.dateModified }}) {% endif %}
+  		{% if post.tags.size > 0 %}
+
+  		{% assign tags_content = "" %}
+  		{% for post_tag in post.tags %}
+  			{% capture tags_content_temp %}
+  				{{ tags_content }}<a href="{{ site.url }}{{ site.baseurl }}/tagged#{{ post_tag | slugify }}">#{{ post_tag }}</a>
+  			{% endcapture %}
+  			{% assign tags_content = tags_content_temp %}
+  		{% endfor %}
+
+  		&middot;	<span class="tags" itemprop="tags">{{ tags_content }}</span>
+
+  	  {% endif %}
+
+     
+
+    </p>
+  </header>
+  <div class="post-content" itemprop="articleBody">
+    {{ content }}
+  </div>
+  <hr>
+  {% if page.comment %}
+    {% include disqus.html %}
+  {% endif %}
+</article>

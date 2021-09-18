@@ -1,5 +1,6 @@
 ---
 layout: post
+type: article
 title: Kubernetes ConfigMap & .NET 5 AppSettings.Json
 tags: [Kubernetes, .NET5 ]
 comment: false

@@ -1,5 +1,6 @@
 ---
 layout: post
+type: article
 title: Inotify Instances Limit Has Been Reached
 tags: [Kubernetes, .NET 5, EKS, Linux]
 comment: false
