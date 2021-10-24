@@ -1,0 +1,179 @@
+---
+layout: post
+type: article
+title: Retries in Distributed Systems
+tags: [Polly, .NET 5, Microservices]
+comment: false
+---
+
+<div class="container-fluid px-0">
+    <div class="row px-0 mx-0">
+        <div class="col mt-0 px-0">
+            <p>
+                While working with distributed systems, you might come across transient issues where a dependent service may become unresponsive or the 
+                request may experience some sort of network issue. Because these issues may require different solutions, you might find yourself 
+                implementing retry strategies such as retrying after a delay, simply retrying, or canceling the request. 
+            </p>
+            <p>
+                After some research I came across the NuGet package <a href="https://github.com/App-vNext/Polly" target="_blank">Polly</a>, a .NET resilience and transient-fault-handling 
+                library that allows developers to express policies such as Retry, Circuit Breaker, Timeout, Bulkhead Isolation, and Fallback in a fluent 
+                and thread-safe manner.
+            </p>
+
+            <p>
+                In this short article, I'll walk through some examples of implementing the library for different scenarios.
+            </p>            
+        </div>
+        <div class="row px-0 mx-0">
+            <div class="col px-0 mx-0">
+                <h2 class="mt-1">Retry Strategies & Examples</h2>
+                <p>
+                    Below are some examples of how you can leverage Polly to get past the transient issue. 
+                </p>
+
+
+
+                <h3>Retry With a Delay</h3>
+                <p> There may be a time where you need to retry after a certain time. Polly allows for a retry after a certain period using the WaitAndRetry method. </p>
+                <p>In the example below, I'm imitating calling a RESTful service that may be intermittently timing out. For this scenario, we make the assumption that two retries with a delay based on the number of retries will suffice. </p>
+                <div class="row">
+                    <div class="col-12 col-lg-6">
+                        <img src="https://anthonyliriano.s3.amazonaws.com/diagram-retry-with-wait.png" class="img-fluid" alt="...">
+                    </div>
+                    <div class="col-12 col-lg-6 mt-3">
+                        <h3>How the Policy Below Works</h3>
+                        The example below will create a policy which will retry 2 times the first time with a 60 second delay the second time with a 120 second delay. 
+                        <ol class="list-group list-group-numbered">
+                            <li class="list-group-item d-flex justify-content-between align-items-start border-0">
+                              <div class="ms-2 me-auto">
+                                <div class="fw-bold">Execute Delegate</div>
+                                The retry policy will execute an HTTP Get call to the specified URL.
+                              </div>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-start border-0">
+                              <div class="ms-2 me-auto">
+                                <div class="fw-bold">Inner Exception Thrown</div>
+                                If the HTTP Get call exceeds the specified timeout, an exception is thrown containing TaskCanceledExceptions
+                              </div>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-start border-0">
+                              <div class="ms-2 me-auto">
+                                <div class="text-bold">Another Retry</div>
+                                The policy will then check if another retry is allowed, if so it will wait the specified time.
+                              </div>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-start border-0">
+                                <div class="ms-2 me-auto">
+                                  <div class="fw-bold">Wait</div>
+                                  Once the wait period is over, it will attempt to re-execute the action.
+                                  (You'll want to account for the timeout of the client you're using to call the URL. In this example, I'm using the HttpClient and have modified the timeout to 60 seconds.)
+                                </div>
+                              </li>                            
+                          </ol>
+                    </div>
+                </div>
+                <pre><code class="language-csharp">using Polly;
+using Polly.Retry;
+using System;
+using System.Net.Http;
+
+namespace Retry
+{
+    class Program
+    {
+        private static readonly string URL = "http://localhost:5000/api/values";
+        private static readonly RetryPolicy TimeoutRetryPolicy = Policy.HandleInner&lt;TaskCanceledException&gt;().WaitAndRetry(2, retryAttempt => TimeSpan.FromSeconds(60 * retryAttempt));
+
+        static void Main(string[] args)
+        {
+            CallHttpService();
+            Console.Read();
+        }
+
+        public static void CallHttpService()
+        {
+            HttpClient client = new();
+            client.Timeout = TimeSpan.FromSeconds(60);            
+            TimeoutRetryPolicy.Execute(() =>
+            {
+                HttpResponseMessage result = client.GetAsync(URL).Result;
+            });
+        }
+    }
+}</code></pre>
+
+{% include subscribe.html %}
+                <h3>Retry </h3>
+                <p>This is your ordinary Retry. In the event the program is ___, Polly will reinvoke the method??</p>
+
+                <p> 
+                    In the first retry, the console application attempts to read a file that does not yet exist. For the purpose of demonstration, I'm writing the file after the first retry has executed. Polly, will attempt 3 times if the  exception System.IO.FileNotFoundException is triggered.
+                </p>
+                <div class="row">
+                    <div class="col-12 col-lg-6">
+                        <img src="https://anthonyliriano.s3.amazonaws.com/Diagram-Retry.png" class="img-fluid" alt="...">
+                    </div>
+                    <div class="col-12 col-lg-6 mt-3">
+                        <h3>How the Policy Below Works</h3>
+                        The example below will create a policy which will retry 2 times. 
+                        <ol class="list-group list-group-numbered">
+                            <li class="list-group-item d-flex justify-content-between align-items-start border-0">
+                              <div class="ms-2 me-auto">
+                                <div class="fw-bold">Execute Delegate</div>
+                                The policy will attempt to open a file that does not exist.
+                              </div>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-start border-0">
+                              <div class="ms-2 me-auto">
+                                <div class="fw-bold">Exception Is FileNotFoundException</div>
+                                Because the file will not exist on the first retry, an exception will be thrown.
+                              </div>
+                            </li>
+
+                            <li class="list-group-item d-flex justify-content-between align-items-start border-0">
+                                <div class="ms-2 me-auto">
+                                  <div class="text-bold">Another Retry</div>
+                                  The policy will then check if another retry is allowed, if so it will execute the action again.
+                                </div>
+                              </li>                          
+                          </ol>
+                    </div>
+                </div>
+
+<pre><code class="language-csharp">using Polly;
+using Polly.Retry;
+using System;
+using System.IO;
+
+namespace Retry
+{
+    class Program
+    {
+        private static readonly string RandomFile = @"C:\Development\tmp\" + Guid.NewGuid() + ".txt";
+        private static readonly RetryPolicy FileNotFoundRetryPolicy = Policy.Handle&lt;FileNotFoundException&gt;().Retry(2);
+
+        static void Main(string[] args)
+        {
+            ReadFile();
+            Console.Read();
+        }
+
+        public static void ReadFile()
+        {
+            int retries = 0;
+            FileNotFoundRetryPolicy.Execute(() =>
+            {
+                retries++;
+                if (retries == 2)
+                    File.WriteAllText(RandomFile, nameof(RandomFile));
+
+                File.OpenRead(RandomFile);
+            });
+        }
+    }
+}</code></pre>
+            </div>
+        </div>
+
+    </div>
+</div>
