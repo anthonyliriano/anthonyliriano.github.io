@@ -104,7 +104,7 @@ namespace Retry
 
 {% include subscribe.html %}
                 <h3>Retry </h3>
-                <p>This is your ordinary Retry. In the event the program is ___, Polly will reinvoke the method??</p>
+                <p>This is your ordinary Retry. In the event that one or more retries will get you past the issue.</p>
 
                 <p> 
                     In the first retry, the console application attempts to read a file that does not yet exist. For the purpose of demonstration, I'm writing the file after the first retry has executed. Polly, will attempt 3 times if the  exception System.IO.FileNotFoundException is triggered.
