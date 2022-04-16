@@ -5,9 +5,257 @@
     <description></description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sat, 18 Sep 2021 11:48:50 -0400</pubDate>
-    <lastBuildDate>Sat, 18 Sep 2021 11:48:50 -0400</lastBuildDate>
+    <pubDate>Sat, 23 Oct 2021 15:11:22 -0400</pubDate>
+    <lastBuildDate>Sat, 23 Oct 2021 15:11:22 -0400</lastBuildDate>
     <generator>Jekyll v3.9.1</generator>
+    
+      <item>
+        <title>Retries in Distributed Systems</title>
+        <description>&lt;div class=&quot;container-fluid px-0&quot;&gt;
+    &lt;div class=&quot;row px-0 mx-0&quot;&gt;
+        &lt;div class=&quot;col mt-0 px-0&quot;&gt;
+            &lt;p&gt;
+                While working with distributed systems, you might come across transient issues where a dependent service may become unresponsive or the 
+                request may experience some sort of network issue. Because these issues may require different solutions, you might find yourself 
+                implementing retry strategies such as retrying after a delay, simply retrying, or canceling the request. 
+            &lt;/p&gt;
+            &lt;p&gt;
+                After some research I came across the NuGet package &lt;a href=&quot;https://github.com/App-vNext/Polly&quot; target=&quot;_blank&quot;&gt;Polly&lt;/a&gt;, a .NET resilience and transient-fault-handling 
+                library that allows developers to express policies such as Retry, Circuit Breaker, Timeout, Bulkhead Isolation, and Fallback in a fluent 
+                and thread-safe manner.
+            &lt;/p&gt;
+
+            &lt;p&gt;
+                In this short article, I'll walk through some examples of implementing the library for different scenarios.
+            &lt;/p&gt;            
+        &lt;/div&gt;
+        &lt;div class=&quot;row px-0 mx-0&quot;&gt;
+            &lt;div class=&quot;col px-0 mx-0&quot;&gt;
+                &lt;h2 class=&quot;mt-1&quot;&gt;Retry Strategies &amp; Examples&lt;/h2&gt;
+                &lt;p&gt;
+                    Below are some examples of how you can leverage Polly to get past the transient issue. 
+                &lt;/p&gt;
+
+
+
+                &lt;h3&gt;Retry With a Delay&lt;/h3&gt;
+                &lt;p&gt; There may be a time where you need to retry after a certain time. Polly allows for a retry after a certain period using the WaitAndRetry method. &lt;/p&gt;
+                &lt;p&gt;In the example below, I'm imitating calling a RESTful service that may be intermittently timing out. For this scenario, we make the assumption that two retries with a delay based on the number of retries will suffice. &lt;/p&gt;
+                &lt;div class=&quot;row&quot;&gt;
+                    &lt;div class=&quot;col-12 col-lg-6&quot;&gt;
+                        &lt;img src=&quot;https://anthonyliriano.s3.amazonaws.com/diagram-retry-with-wait.png&quot; class=&quot;img-fluid&quot; alt=&quot;...&quot;&gt;
+                    &lt;/div&gt;
+                    &lt;div class=&quot;col-12 col-lg-6 mt-3&quot;&gt;
+                        &lt;h3&gt;How the Policy Below Works&lt;/h3&gt;
+                        The example below will create a policy which will retry 2 times the first time with a 60 second delay the second time with a 120 second delay. 
+                        &lt;ol class=&quot;list-group list-group-numbered&quot;&gt;
+                            &lt;li class=&quot;list-group-item d-flex justify-content-between align-items-start border-0&quot;&gt;
+                              &lt;div class=&quot;ms-2 me-auto&quot;&gt;
+                                &lt;div class=&quot;fw-bold&quot;&gt;Execute Delegate&lt;/div&gt;
+                                The retry policy will execute an HTTP Get call to the specified URL.
+                              &lt;/div&gt;
+                            &lt;/li&gt;
+                            &lt;li class=&quot;list-group-item d-flex justify-content-between align-items-start border-0&quot;&gt;
+                              &lt;div class=&quot;ms-2 me-auto&quot;&gt;
+                                &lt;div class=&quot;fw-bold&quot;&gt;Inner Exception Thrown&lt;/div&gt;
+                                If the HTTP Get call exceeds the specified timeout, an exception is thrown containing TaskCanceledExceptions
+                              &lt;/div&gt;
+                            &lt;/li&gt;
+                            &lt;li class=&quot;list-group-item d-flex justify-content-between align-items-start border-0&quot;&gt;
+                              &lt;div class=&quot;ms-2 me-auto&quot;&gt;
+                                &lt;div class=&quot;text-bold&quot;&gt;Another Retry&lt;/div&gt;
+                                The policy will then check if another retry is allowed, if so it will wait the specified time.
+                              &lt;/div&gt;
+                            &lt;/li&gt;
+                            &lt;li class=&quot;list-group-item d-flex justify-content-between align-items-start border-0&quot;&gt;
+                                &lt;div class=&quot;ms-2 me-auto&quot;&gt;
+                                  &lt;div class=&quot;fw-bold&quot;&gt;Wait&lt;/div&gt;
+                                  Once the wait period is over, it will attempt to re-execute the action.
+                                  (You'll want to account for the timeout of the client you're using to call the URL. In this example, I'm using the HttpClient and have modified the timeout to 60 seconds.)
+                                &lt;/div&gt;
+                              &lt;/li&gt;                            
+                          &lt;/ol&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;pre&gt;&lt;code class=&quot;language-csharp&quot;&gt;using Polly;
+using Polly.Retry;
+using System;
+using System.Net.Http;
+
+namespace Retry
+{
+    class Program
+    {
+        private static readonly string URL = &quot;http://localhost:5000/api/values&quot;;
+        private static readonly RetryPolicy TimeoutRetryPolicy = Policy.HandleInner&amp;lt;TaskCanceledException&amp;gt;().WaitAndRetry(2, retryAttempt =&gt; TimeSpan.FromSeconds(60 * retryAttempt));
+
+        static void Main(string[] args)
+        {
+            CallHttpService();
+            Console.Read();
+        }
+
+        public static void CallHttpService()
+        {
+            HttpClient client = new();
+            client.Timeout = TimeSpan.FromSeconds(60);            
+            TimeoutRetryPolicy.Execute(() =&gt;
+            {
+                HttpResponseMessage result = client.GetAsync(URL).Result;
+            });
+        }
+    }
+}&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div class=&quot;row bg-dark p-1&quot;&gt;
+    &lt;div class=&quot;col text-white py-2&quot;&gt;
+        &lt;h3 class=&quot;m-1&quot;&gt;
+            👋 PLZ SUBSCRIBE
+        &lt;/h3&gt;
+        &lt;h6 class=&quot;px-3 my-0 fw-light mb-2&quot;&gt;
+            No Spam. Unsubscribe easily at any time.
+        &lt;/h6&gt;
+        &lt;div class=&quot;row px-3&quot; id=&quot;subscription-form&quot;&gt;
+            &lt;div class=&quot;col-lg-5 col-md-5 col-sm-12 py-2&quot;&gt;
+                &lt;input class=&quot;form-control form-control-lg &quot; id=&quot;email&quot; type=&quot;email&quot; placeholder=&quot;name@example.com&quot; aria-label=&quot;.form-control-lg example&quot;&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;col-lg-4 col-md-4 col-sm-12 py-2&quot;&gt;
+                &lt;button type=&quot;button&quot; class=&quot;btn btn-light btn-lg&quot; onclick=&quot;Subscribe()&quot; &gt;SUBSCRIBE&lt;/button&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;row px-3 visually-hidden bg-light text-dark justify-content-center&quot; id=&quot;subscription-thanks&quot;&gt;
+            &lt;div class=&quot;col-lg-7 col-md-7 col-sm-12 py-2 text-center&quot;&gt;
+               &lt;h3 class=&quot;my-1 fw-light&quot;&gt; 🎊 🎉 Thanks For Your Subscription! &lt;/h3&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script type=&quot;text/javascript&quot;&gt;
+    function Subscribe() {
+        var isInvalid = true;
+        var element = document.getElementById('email');
+        var invalidBorderClass = 'border-danger';
+        if(element){
+            if(element.value){
+                const re = /^(([^&lt;&gt;()[\]\\.,;:\s@&quot;]+(\.[^&lt;&gt;()[\]\\.,;:\s@&quot;]+)*)|(&quot;.+&quot;))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                if(re.test(String(element.value).toLowerCase())){
+                    isInvalid = false;
+                    document.getElementById('subscription-form').classList = 'visually-hidden';
+                    document.getElementById('subscription-thanks').classList.remove('visually-hidden');
+                
+                    var xhttp = new XMLHttpRequest();
+                    xhttp.onreadystatechange = function() {
+                        if (this.readyState == 4 &amp;&amp; this.status == 200) {
+                            // window.location.href = &quot;/&quot;;
+                        }
+                    };
+                
+                    const json = {
+                        &quot;email&quot; : element.value.toLowerCase()
+                    }
+
+                    xhttp.open(&quot;POST&quot;, &quot;https://hc9uysiio7.execute-api.us-east-1.amazonaws.com/Prod/api/v1/notify/slack&quot;, true);
+                    xhttp.setRequestHeader(&quot;Content-type&quot;, &quot;application/json&quot;);
+                    xhttp.send(JSON.stringify(json));
+                }
+            }
+        }
+
+        if(isInvalid){
+            element.classList.add(invalidBorderClass);
+        }else{
+            if(element.classList.contains(invalidBorderClass))
+                element.classList.remove(invalidBorderClass)
+        }
+    }
+&lt;/script&gt;
+                &lt;h3&gt;Retry &lt;/h3&gt;
+                &lt;p&gt;This is your ordinary Retry. In the event the program is ___, Polly will reinvoke the method??&lt;/p&gt;
+
+                &lt;p&gt; 
+                    In the first retry, the console application attempts to read a file that does not yet exist. For the purpose of demonstration, I'm writing the file after the first retry has executed. Polly, will attempt 3 times if the  exception System.IO.FileNotFoundException is triggered.
+                &lt;/p&gt;
+                &lt;div class=&quot;row&quot;&gt;
+                    &lt;div class=&quot;col-12 col-lg-6&quot;&gt;
+                        &lt;img src=&quot;https://anthonyliriano.s3.amazonaws.com/Diagram-Retry.png&quot; class=&quot;img-fluid&quot; alt=&quot;...&quot;&gt;
+                    &lt;/div&gt;
+                    &lt;div class=&quot;col-12 col-lg-6 mt-3&quot;&gt;
+                        &lt;h3&gt;How the Policy Below Works&lt;/h3&gt;
+                        The example below will create a policy which will retry 2 times. 
+                        &lt;ol class=&quot;list-group list-group-numbered&quot;&gt;
+                            &lt;li class=&quot;list-group-item d-flex justify-content-between align-items-start border-0&quot;&gt;
+                              &lt;div class=&quot;ms-2 me-auto&quot;&gt;
+                                &lt;div class=&quot;fw-bold&quot;&gt;Execute Delegate&lt;/div&gt;
+                                The policy will attempt to open a file that does not exist.
+                              &lt;/div&gt;
+                            &lt;/li&gt;
+                            &lt;li class=&quot;list-group-item d-flex justify-content-between align-items-start border-0&quot;&gt;
+                              &lt;div class=&quot;ms-2 me-auto&quot;&gt;
+                                &lt;div class=&quot;fw-bold&quot;&gt;Exception Is FileNotFoundException&lt;/div&gt;
+                                Because the file will not exist on the first retry, an exception will be thrown.
+                              &lt;/div&gt;
+                            &lt;/li&gt;
+
+                            &lt;li class=&quot;list-group-item d-flex justify-content-between align-items-start border-0&quot;&gt;
+                                &lt;div class=&quot;ms-2 me-auto&quot;&gt;
+                                  &lt;div class=&quot;text-bold&quot;&gt;Another Retry&lt;/div&gt;
+                                  The policy will then check if another retry is allowed, if so it will execute the action again.
+                                &lt;/div&gt;
+                              &lt;/li&gt;                          
+                          &lt;/ol&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-csharp&quot;&gt;using Polly;
+using Polly.Retry;
+using System;
+using System.IO;
+
+namespace Retry
+{
+    class Program
+    {
+        private static readonly string RandomFile = @&quot;C:\Development\tmp\&quot; + Guid.NewGuid() + &quot;.txt&quot;;
+        private static readonly RetryPolicy FileNotFoundRetryPolicy = Policy.Handle&amp;lt;FileNotFoundException&amp;gt;().Retry(2);
+
+        static void Main(string[] args)
+        {
+            ReadFile();
+            Console.Read();
+        }
+
+        public static void ReadFile()
+        {
+            int retries = 0;
+            FileNotFoundRetryPolicy.Execute(() =&gt;
+            {
+                retries++;
+                if (retries == 2)
+                    File.WriteAllText(RandomFile, nameof(RandomFile));
+
+                File.OpenRead(RandomFile);
+            });
+        }
+    }
+}&lt;/code&gt;&lt;/pre&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+    &lt;/div&gt;
+&lt;/div&gt;</description>
+        <pubDate>Thu, 21 Oct 2021 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2021/10/21/21-Retries-In-Distributed-Systems.html</link>
+        <guid isPermaLink="true">http://localhost:4000/2021/10/21/21-Retries-In-Distributed-Systems.html</guid>
+        
+        <category>Polly</category>
+        
+        <category>.NET 5</category>
+        
+        <category>Microservices</category>
+        
+        
+      </item>
     
       <item>
         <title>Serverless .NET 5 Web API 🔥 🔥</title>

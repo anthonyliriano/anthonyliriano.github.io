@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 /**
  * Reset some basic elements
  */
@@ -503,3 +504,9 @@ pre[class*="language-"] {
 a.card-link {
   font-size: .95rem;
   text-decoration: none; }
+
+.container-fluid {
+  font-family: 'Inter', sans-serif; }
+
+.text-bold {
+  font-weight: 900 !important; }
